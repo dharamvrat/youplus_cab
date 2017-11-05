@@ -26,7 +26,7 @@ Created 2 database tables:
                       KEY 'driver_id' ('driver_id'),
                       CONSTRAINT 'booking_ibfk_2' FOREIGN KEY ('driver_id') REFERENCES 'DRIVER' ('id')
                     )
-          - Foreign key is the primary key ('id') of table 'Driver'
+           - Foreign key is the primary key ('id') of table 'Driver'
 
 3. Customer<Not created>:
           - Did not create this table as we do not need it at this point of time. If required, this table can be added later.
