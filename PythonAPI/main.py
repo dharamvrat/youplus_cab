@@ -76,14 +76,14 @@ class BookingReq(Resource):
             cursor.execute("SELECT COUNT(*) FROM booking WHERE status = %s", BookingStatus.WAITING)
             pending_req_count = cursor.fetchone()[0]
             if (int(pending_req_count) >= MAX_PENDING_REQ):
-                result = {'request_status': 'cancelled', 'result':'all drivers busy'}
+                result = {'request_status': 'Cancelled', 'message':'All drivers busy, Maximum waiting list reached'}
             else:
                 cursor.execute("INSERT INTO BOOKING(customer_id) VALUES(%s)" ,int(customer_id))
                 conn.commit()
-                result = {'request_status': 'waiting'}
+                result = {'request_status': 'Success', 'message': 'Waiting'}
         except:
             conn.rollback()
-            result = {'request_status': 'cancelled', 'result': 'Exception in connection to DB'}
+            result = {'request_status': 'Cancelled', 'message': 'Exception in connection to DB'}
         finally:
             cursor.close()
             conn.close()
@@ -100,7 +100,7 @@ class Dashboard(Resource):
             result = [dict((cursor.description[i][0], value) \
                for i, value in enumerate(row)) for row in cursor.fetchall()]
         except:
-            result = {'request_status': 'cancelled', 'result': 'Exception in connection to DB'}
+            result = {'request_status': 'Cancelled', 'message': 'Exception in connection to DB'}
         finally:
             cursor.close()
             conn.close()
@@ -114,13 +114,13 @@ class AcceptDriverReq(Resource):
         try:
             cursor.execute("SELECT * FROM booking WHERE id = %s and status = %s", (booking_id, BookingStatus.WAITING))
             if not cursor.rowcount:
-                result = {'request_status': 'cancelled', 'result': 'booking under process'}
+                result = {'request_status': 'Cancelled', 'message': 'Booking either Ongoing or Completed'}
             else:
                 thread = StartTripThread(driver_id, booking_id)
                 thread.start()
-                result = {'request_status': 'success', 'result' : 'Refresh to see current status'}
+                result = {'request_status': 'Success', 'message' : 'Refresh to see current status'}
         except:
-            result = {'request_status': 'cancelled', 'result': 'Exception'}
+            result = {'request_status': 'Cancelled', 'message': 'Exception Found'}
         finally:
             cursor.close()
             conn.close()
@@ -161,7 +161,7 @@ class DriverDashboard(Resource):
 
             result = {'waiting' : waiting_req, 'ongoing' : ongoing_req, 'completed' : completed_req}
         except:
-            result = {'request_status': 'cancelled', 'result': 'Exception in connection to DB'}
+            result = {'request_status': 'Cancelled', 'message': 'Exception in connection to DB'}
         finally:
             cursor.close()
             conn.close()
