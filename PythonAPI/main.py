@@ -47,7 +47,6 @@ def start_trip(driver_id, booking_id):
 def end_trip(booking_id):
     conn = pymysql.connect(**config)
     cursor = conn.cursor()
-    result = {}
     try:
         update_lock.acquire()
         cursor.execute("UPDATE booking SET completed_at = CURRENT_TIMESTAMP, status = %s \
@@ -76,14 +75,14 @@ class BookingReq(Resource):
             cursor.execute("SELECT COUNT(*) FROM booking WHERE status = %s", BookingStatus.WAITING)
             pending_req_count = cursor.fetchone()[0]
             if (int(pending_req_count) >= MAX_PENDING_REQ):
-                result = {'request_status': 'Cancelled', 'message':'All drivers busy, Maximum waiting list reached'}
+                result = {'status': 'Error', 'message':'All drivers busy, Maximum waiting list reached'}
             else:
                 cursor.execute("INSERT INTO BOOKING(customer_id) VALUES(%s)" ,int(customer_id))
                 conn.commit()
-                result = {'request_status': 'Success', 'message': 'Waiting'}
+                result = {'status': 'Success', 'message': 'Booking successful, Waiting for driver'}
         except:
             conn.rollback()
-            result = {'request_status': 'Cancelled', 'message': 'Exception in connection to DB'}
+            result = {'status': 'Error', 'message': 'Exception in connection to DB'}
         finally:
             cursor.close()
             conn.close()
@@ -99,8 +98,9 @@ class Dashboard(Resource):
             TIMESTAMPDIFF(SECOND, created_at, CURRENT_TIMESTAMP) as time_elapsed, status FROM booking")
             result = [dict((cursor.description[i][0], value) \
                for i, value in enumerate(row)) for row in cursor.fetchall()]
+            result = {'status' : 'Success', 'message' : result}
         except:
-            result = {'request_status': 'Cancelled', 'message': 'Exception in connection to DB'}
+            result = {'status': 'Error', 'message': 'Exception in connection to DB'}
         finally:
             cursor.close()
             conn.close()
@@ -114,13 +114,13 @@ class AcceptDriverReq(Resource):
         try:
             cursor.execute("SELECT * FROM booking WHERE id = %s and status = %s", (booking_id, BookingStatus.WAITING))
             if not cursor.rowcount:
-                result = {'request_status': 'Cancelled', 'message': 'Booking either Ongoing or Completed'}
+                result = {'status': 'Error', 'message': 'Booking either Ongoing or Completed'}
             else:
                 thread = StartTripThread(driver_id, booking_id)
                 thread.start()
-                result = {'request_status': 'Success', 'message' : 'Refresh to see current status'}
+                result = {'status': 'Success', 'message' : 'Refresh to see current status'}
         except:
-            result = {'request_status': 'Cancelled', 'message': 'Exception Found'}
+            result = {'status': 'Error', 'message': 'Exception Found'}
         finally:
             cursor.close()
             conn.close()
@@ -135,7 +135,7 @@ class DriverDashboard(Resource):
             # this could be used when we want to implement login using driver id
             # cursor.execute("SELECT * FROM driver WHERE id = %s", int(driver_id))
             # if not cursor.rowcount:
-            #    result = {'request_status': 'cancelled', 'result': 'driver id does not exist'}
+            #    result = {'status': 'Error', 'result': 'driver id does not exist'}
             cursor.execute("SELECT id as request_id, customer_id, \
                 TIMESTAMPDIFF(MINUTE, created_at, CURRENT_TIMESTAMP) as requested_min \
                 FROM booking WHERE status = %s", BookingStatus.WAITING)
@@ -160,8 +160,9 @@ class DriverDashboard(Resource):
                for i, value in enumerate(row)) for row in cursor.fetchall()]
 
             result = {'waiting' : waiting_req, 'ongoing' : ongoing_req, 'completed' : completed_req}
+            result = {'status' : 'Success', 'message' : result}
         except:
-            result = {'request_status': 'Cancelled', 'message': 'Exception in connection to DB'}
+            result = {'status': 'Error', 'message': 'Exception in connection to DB'}
         finally:
             cursor.close()
             conn.close()
